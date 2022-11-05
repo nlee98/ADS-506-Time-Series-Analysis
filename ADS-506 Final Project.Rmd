@@ -1,0 +1,122 @@
+---
+title: "ADS-506 Final Project"
+author: "Nicholas Lee"
+date: "11/5/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+## PACKAGES ##
+library(tidyverse)
+library(fpp2)
+library(readr)
+library(zoo)
+```
+
+```{r Import Data}
+# Import Dataset #
+caur_df <- read_csv(
+  "CAUR.csv", 
+  col_types = cols(DATE = col_date(format = "%Y-%m-%d")))
+```
+
+```{r Summary Statistics}
+summary(caur_df)
+```
+
+```{r CAUR-Yearly Statistics}
+# Create a New Yearly Dataframe #
+caur_yearly <- caur_df
+
+# Extract Years from DATE Column #
+caur_yearly$Year <- format(caur_yearly$DATE, "%Y")
+
+# Drop Original Date Column #
+caur_yearly$DATE <- NULL
+
+# Calculate Average Unemployment Rate per Year #
+caur_yearly_stats <- caur_yearly %>%
+  group_by(Year) %>%
+  summarise(Avg_UR = mean(CAUR))
+
+# Plot Yearly Avg. Unemployment Rate #
+ggplot(caur_yearly_stats, aes(Year, Avg_UR, group = 1)) +
+  geom_line(size = 1, color = "blue") +
+  geom_point(color = "blue") + 
+  ggtitle("Yearly Average Unemployment Rates (Jan. 1976 - Sept. 2022)") +
+  ylab("Unemployment Rate (%)") +
+  scale_x_discrete(breaks = round(
+    seq(
+      min(caur_yearly_stats$Year), 
+      max(caur_yearly_stats$Year), by = 5), 1))
+  theme_minimal()
+```
+
+```{r Raw Data - Time Plot}
+# Convert Raw Data to Time Series #
+caur_ts <- ts(
+  caur_df$CAUR, start = c(1976, 1), frequency = 12)
+
+# Time Plot #
+autoplot(caur_ts) +
+  labs(title = "Monthly Unemployment Rate (Jan. 1976 - Sept. 2022)",
+       x = "Time",
+       y = "Unemployment Rate (%)") +
+  geom_hline(yintercept = mean(caur_df$CAUR), color="blue") +
+  theme_minimal()
+```
+
+```{r Raw Data - Time Plot Zoomed In}
+# Time Plot #
+autoplot(caur_ts) +
+  labs(title = "Monthly Unemployment Rate (Jan. 1980 - Jan. 1985)",
+       x = "Time",
+       y = "Unemployment Rate (%)") +
+  xlim(c(1980, 1985)) +
+  theme_minimal()
+```
+
+
+```{r CAUR-Monthly Box Plot}
+# Create Column for Month #
+caur_monthly <- caur_df 
+caur_monthly$Month <- months(caur_df$DATE)
+
+# Drop DATE Column #
+caur_monthly$DATE <- NULL
+
+# Reorder Month Names #
+caur_monthly$Month <- factor(
+  caur_monthly$Month,
+  levels = c("January", "February", "March", "April",
+             "May", "June", "July", "August",
+             "September", "October","November", "December"))
+
+# Boxplot by Month #
+ggplot(caur_monthly, aes(Month, CAUR)) +
+  ggtitle("Distribution of Unemployment Rate by Month") +
+  ylab("Unemployment Rate (%)") +
+  geom_boxplot()
+```
+
+```{r Monthly Outliers}
+caur_df[caur_df$CAUR > 13, ]
+```
+
+```{r Raw Data - Additive Decomposition Plot}
+# Decompose Time Series into Components #
+caur_decomp <- decompose(caur_ts)
+
+# Decomposition Plot #
+plot(caur_decomp)
+```
+
+```{r Multiplicative Decomposition}
+# Decompose Time Series into Components #
+caur_multi_decomp <- decompose(caur_ts, type = "multiplicative")
+
+# Decomposition Plot #
+plot(caur_multi_decomp)
+```
+
