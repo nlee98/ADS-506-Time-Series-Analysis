@@ -12,8 +12,10 @@ library(tidyverse)
 library(fpp2)
 library(readr)
 library(zoo)
+library(tseries) # For adf test
 ```
 
+# Importing the Data Set
 ```{r Import Data}
 # Import Dataset #
 caur_df <- read_csv(
@@ -21,10 +23,21 @@ caur_df <- read_csv(
   col_types = cols(DATE = col_date(format = "%Y-%m-%d")))
 ```
 
+# Series Summary Statistics
 ```{r Summary Statistics}
 summary(caur_df)
 ```
 
+```{r Histogram of CAUR}
+hist(caur_df$CAUR,
+     main = "Histogram of California Unemployment Rate",
+     xlab = "Unemployment Rate %",
+     col = "blue")
+```
+
+_Note_: The above plot indicates that the distribution of the target variable is skewed right.
+
+# Yearly Average Unemployment Rate (%)
 ```{r CAUR-Yearly Statistics}
 # Create a New Yearly Dataframe #
 caur_yearly <- caur_df
@@ -53,6 +66,7 @@ ggplot(caur_yearly_stats, aes(Year, Avg_UR, group = 1)) +
   theme_minimal()
 ```
 
+# Time Plot of California Unemployment Rate
 ```{r Raw Data - Time Plot}
 # Convert Raw Data to Time Series #
 caur_ts <- ts(
@@ -73,11 +87,11 @@ autoplot(caur_ts) +
   labs(title = "Monthly Unemployment Rate (Jan. 1980 - Jan. 1985)",
        x = "Time",
        y = "Unemployment Rate (%)") +
-  xlim(c(1980, 1985)) +
+  coord_cartesian(xlim = c(1980, 1985)) +
   theme_minimal()
 ```
 
-
+# Distribution of Unemployment Rate by Month
 ```{r CAUR-Monthly Box Plot}
 # Create Column for Month #
 caur_monthly <- caur_df 
@@ -104,6 +118,7 @@ ggplot(caur_monthly, aes(Month, CAUR)) +
 caur_df[caur_df$CAUR > 13, ]
 ```
 
+# Decomposition Plots
 ```{r Raw Data - Additive Decomposition Plot}
 # Decompose Time Series into Components #
 caur_decomp <- decompose(caur_ts)
@@ -120,3 +135,60 @@ caur_multi_decomp <- decompose(caur_ts, type = "multiplicative")
 plot(caur_multi_decomp)
 ```
 
+# Test for Stationarity - Augmented Dickey-Fuller (ADF) Test
+```{r}
+adf.test(caur_ts)
+```
+
+|   The null hypothesis of the Augmented Dickey-Fuller (ADF) test is that the series is non-stationary, where the alternative hypothesis is that the series is stationary. The null hypothesis can be rejected if the p-value is less than a significant value, typically 0.05. Here, the p-value is 0.1525, much greater than 0.05. Therefore, the null hypothesis cannot be rejected, indicating the series is non-stationary.
+
+
+# Assessing if the Series is a Random Walk - Autocorrelation (ACF) Plot
+```{r Series ACF Plot}
+Acf(caur_ts,
+    main = "Autocorrelation Plot")
+```
+
+_Note_: According to Shmueli and Lichtendahl (2018, p. 145), a strong positive lag-1 autocorrelation value is indicative of a strong linear trend. Here, the lag-1 autocorrelation is very close to one, indicating the presence of a linear trend in the series. 
+
+|   The slow decrease in autocorrelation values as lag values increase also support the hypothesis that there is a trend in the data. More importantly, the slow decay to zero of the autocorrelation values suggest that the series may be a random walk. If this is the case, forecasting future values will be more challenging than expected.
+|   In addition, the lack of any patterns in the ACF plot suggests that there is no seasonality in the series.
+
+# Random Walk Assessment Via an ACF Plot
+```{r RandomWalk ACF Plot Test}
+# Order-1 Differencing of the Series
+caur_ts_diff1 <- diff(caur_ts)
+
+# ACF Plot of Order-1 Differenced Series
+Acf(caur_ts_diff1,
+    main = "Autocorrelation of Order-1 Differenced Series")
+```
+
+_Note_: If the ACF plot for all lags are near zero and within the significant value thresholds (shown above by dashed, horizontal blue lines), then the original series is most likely a random walk (Shmueli & Lichtendahl, 2018). In the above plot, the autocorrelation of the order-1 differenced series at lag-1 is above the threshold values; however, the value for the lag-1 autocorrelation of the differenced series is slightly above 0.2. The above plot does not conclusively indicate that the series is not a random walk.
+
+# Random Walk Test via AR(1) Slope Coefficient Hypothesis
+```{r RandomWalk AR(1) Coef. Test}
+# AR(1) Model
+ar1_model <- arima(caur_ts, order = c(1,0,0))
+
+# AR(1) Model Summary
+summary(ar1_model)
+```
+
+|   <mark>**_Warning:_**</mark> The slope coefficient of the AR(1) model is 0.9765. This value is fairly close to one. A random walk results in an AR(1) model with a slope coefficient equal to one. Therefore, this assessment supports the previous finding that the initial series may be a random walk.
+
+# Remove of Trend via lag-1 Differencing
+```{r}
+# Time Plot of the Lag-1 Differenced Series
+autoplot(caur_ts_diff1) +
+  labs(
+    y = "Difference",
+    main = "Time Plot of Lag-1 Differenced Series"
+  )
+```
+
+
+
+**References**
+
+Shmueli, G., & Lichtendahl Jr, K. C. (2018). _Practical time series forecasting with r: A hands-on guide_. Axelrod Schnall Publishers.
