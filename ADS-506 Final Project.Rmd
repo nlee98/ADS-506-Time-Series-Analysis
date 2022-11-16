@@ -28,6 +28,7 @@ caur_df <- read_csv(
 summary(caur_df)
 ```
 
+# Distribution of the Target Variable
 ```{r Histogram of CAUR}
 hist(caur_df$CAUR,
      main = "Histogram of California Unemployment Rate",
@@ -154,7 +155,18 @@ _Note_: According to Shmueli and Lichtendahl (2018, p. 145), a strong positive l
 |   The slow decrease in autocorrelation values as lag values increase also support the hypothesis that there is a trend in the data. More importantly, the slow decay to zero of the autocorrelation values suggest that the series may be a random walk. If this is the case, forecasting future values will be more challenging than expected.
 |   In addition, the lack of any patterns in the ACF plot suggests that there is no seasonality in the series.
 
-# Random Walk Assessment Via an ACF Plot
+# Random Walk Test via AR(1) Slope Coefficient Hypothesis
+```{r RandomWalk AR(1) Coef. Test}
+# AR(1) Model
+ar1_model <- arima(caur_ts, order = c(1,0,0))
+
+# AR(1) Model Summary
+summary(ar1_model)
+```
+
+|   <mark>**_Warning:_**</mark> The slope coefficient of the AR(1) model is 0.9765. This value is fairly close to one. A random walk results in an AR(1) model with a slope coefficient equal to one. Therefore, this assessment supports the previous finding that the initial series may be a random walk.
+
+# Random Walk Assessment Via an ACF Plot of the Lag-1 Differenced Series
 ```{r RandomWalk ACF Plot Test}
 # Order-1 Differencing of the Series
 caur_ts_diff1 <- diff(caur_ts)
@@ -166,16 +178,14 @@ Acf(caur_ts_diff1,
 
 _Note_: If the ACF plot for all lags are near zero and within the significant value thresholds (shown above by dashed, horizontal blue lines), then the original series is most likely a random walk (Shmueli & Lichtendahl, 2018). In the above plot, the autocorrelation of the order-1 differenced series at lag-1 is above the threshold values; however, the value for the lag-1 autocorrelation of the differenced series is slightly above 0.2. The above plot does not conclusively indicate that the series is not a random walk.
 
-# Random Walk Test via AR(1) Slope Coefficient Hypothesis
-```{r RandomWalk AR(1) Coef. Test}
-# AR(1) Model
-ar1_model <- arima(caur_ts, order = c(1,0,0))
-
-# AR(1) Model Summary
-summary(ar1_model)
+# Random Walk Assessment via ADF Test of Lag-1 Differenced Series
+```{r}
+# ADF Test of Lag-1 Differenced Series
+adf.test(caur_ts_diff1)
 ```
 
-|   <mark>**_Warning:_**</mark> The slope coefficient of the AR(1) model is 0.9765. This value is fairly close to one. A random walk results in an AR(1) model with a slope coefficient equal to one. Therefore, this assessment supports the previous finding that the initial series may be a random walk.
+|   The p-value of the ADF test on the lag-1 differenced series is 0.01, lower than the significance threshold of 0.05. This result indicates that the null hypothesis can be rejected in favor of the alternative hypothesis; thus, the differnced series is stationary. If the lag-1 differenced series results in stationarity, the undifferenced series is most likely a random walk (Brownlee, 2017).
+
 
 # Remove of Trend via lag-1 Differencing
 ```{r}
@@ -190,5 +200,8 @@ autoplot(caur_ts_diff1) +
 
 
 **References**
+
+Brownlee, J. (2017). _A gentle introduction to the random walk for times series forecasting with python_. Machine Learning Mastery. Retrieved November 15, 2022, from https://machinelearningmastery.com/gentle-introduction-random-walk-times-series-forecasting-python/ 
+
 
 Shmueli, G., & Lichtendahl Jr, K. C. (2018). _Practical time series forecasting with r: A hands-on guide_. Axelrod Schnall Publishers.
