@@ -38,6 +38,20 @@ hist(caur_df$CAUR,
 
 _Note_: The above plot indicates that the distribution of the target variable is skewed right.
 
+# Log + 1 Transformation of the Dependent Variable
+```{r}
+hist(log(caur_df$CAUR + 1),
+     main = "Histogram of Log+1 Transformed California Unemployment Rate",
+     xlab = "Unemployment Rate %",
+     col = "blue")
+```
+
+# Log+1 Transformed Measures of Centrality
+```{r}
+mean(log(caur_df$CAUR + 1))
+median(log(caur_df$CAUR + 1))
+```
+
 # Yearly Average Unemployment Rate (%)
 ```{r CAUR-Yearly Statistics}
 # Create a New Yearly Dataframe #
@@ -58,13 +72,12 @@ caur_yearly_stats <- caur_yearly %>%
 ggplot(caur_yearly_stats, aes(Year, Avg_UR, group = 1)) +
   geom_line(size = 1, color = "blue") +
   geom_point(color = "blue") + 
-  ggtitle("Yearly Average Unemployment Rates (Jan. 1976 - Sept. 2022)") +
+  ggtitle("Yearly Average Unemployment Rates (Jan. 1976 - Oct. 2022)") +
   ylab("Unemployment Rate (%)") +
   scale_x_discrete(breaks = round(
     seq(
       min(caur_yearly_stats$Year), 
       max(caur_yearly_stats$Year), by = 5), 1))
-  theme_minimal()
 ```
 
 # Time Plot of California Unemployment Rate
@@ -75,7 +88,7 @@ caur_ts <- ts(
 
 # Time Plot #
 autoplot(caur_ts) +
-  labs(title = "Monthly Unemployment Rate (Jan. 1976 - Sept. 2022)",
+  labs(title = "Monthly Unemployment Rate (Jan. 1976 - Oct. 2022)",
        x = "Time",
        y = "Unemployment Rate (%)") +
   geom_hline(yintercept = mean(caur_df$CAUR), color="blue") +
@@ -109,14 +122,27 @@ caur_monthly$Month <- factor(
              "September", "October","November", "December"))
 
 # Boxplot by Month #
-ggplot(caur_monthly, aes(Month, CAUR)) +
+ggplot(caur_monthly, aes(reorder(Month, desc(Month)), CAUR)) +
   ggtitle("Distribution of Unemployment Rate by Month") +
   ylab("Unemployment Rate (%)") +
-  geom_boxplot()
+  geom_boxplot() +
+  coord_flip()
 ```
 
 ```{r Monthly Outliers}
 caur_df[caur_df$CAUR > 13, ]
+```
+
+# Outlier Handling with tsclean()
+```{r Outlier Resolution and Time Plot}
+# Resolve outliers via tsclean()
+caur_ts_nooutlier <- tsclean(caur_ts)
+
+# Time Plot without Outliers
+autoplot(caur_ts_nooutlier) +
+  labs(title = "Monthly Unemployment Rate - Outliers Removed and Forecasted",
+       x = "Time",
+       y = "Unemployment Rate (%)")
 ```
 
 # Decomposition Plots
@@ -136,8 +162,18 @@ caur_multi_decomp <- decompose(caur_ts, type = "multiplicative")
 plot(caur_multi_decomp)
 ```
 
+# Decomposition Plot for Series where Outliers are Resolved
+```{r Decomposition Plot of Outlier-Resolved Series}
+# Decompose Time Series into Components #
+caur_nooutlier_decomp <- decompose(
+  caur_ts_nooutlier)
+
+# Decomposition Plot #
+plot(caur_nooutlier_decomp)
+```
+
 # Test for Stationarity - Augmented Dickey-Fuller (ADF) Test
-```{r}
+```{r ADF Test of Raw Series}
 adf.test(caur_ts)
 ```
 
@@ -154,6 +190,14 @@ _Note_: According to Shmueli and Lichtendahl (2018, p. 145), a strong positive l
 
 |   The slow decrease in autocorrelation values as lag values increase also support the hypothesis that there is a trend in the data. More importantly, the slow decay to zero of the autocorrelation values suggest that the series may be a random walk. If this is the case, forecasting future values will be more challenging than expected.
 |   In addition, the lack of any patterns in the ACF plot suggests that there is no seasonality in the series.
+
+# Partial Autocorrelation Plot of the Raw Series
+```{r Partial Autocorrelation Plot of Raw Series}
+Pacf(caur_ts,
+     main = "Partial Autocorrelation Plot")
+```
+
+|   The partial autocorrelation (pacf) plot suggests that a first or second-order autoregressive model is most suitable for forecasting the series, based on the lags that have partial autocorrelation values over the thresholds. 
 
 # Random Walk Test via AR(1) Slope Coefficient Hypothesis
 ```{r RandomWalk AR(1) Coef. Test}
@@ -195,6 +239,154 @@ autoplot(caur_ts_diff1) +
     y = "Difference",
     main = "Time Plot of Lag-1 Differenced Series"
   )
+```
+
+# Data Partitioning
+```{r Data Partitioning}
+# Use the series where outliers have been resolved
+# Training Set: Jan. 1976 to Dec. 2021
+caur_train <- window(
+  caur_ts_nooutlier,
+  start = c(1976, 1),
+  end = c(2021, 12)
+)
+
+# Test Set: Jan. 2022 - Oct. 2022
+caur_test <- window(
+  caur_ts_nooutlier,
+  start = c(2022, 1)
+)
+```
+
+
+# Modeling
+## Naive Forecast Modeling
+```{r Naive Forecast}
+# rwf(): Naive and Random Walk Forecasting
+caur_rwf <- rwf(
+  caur_ts_nooutlier,
+  h = 14
+)
+
+autoplot(caur_rwf) +
+  labs(
+    y = "Unemployment Rate (%)",
+    title = "Naive Forecast for Nov.'22 Until Dec.'23"
+  ) 
+
+```
+
+```{r Naive Forecast Zoomed In}
+autoplot(caur_rwf) +
+  labs(
+    y = "Unemployment Rate (%)",
+    title = "Naive Forecast for Nov.'22 Until Dec.'23"
+  ) +
+  coord_cartesian(xlim = c(2021, 2024))
+```
+
+## Double-Exponential Smoothing
+```{r}
+# For series with trend but no seasonality
+# ACF plots revealed the series has no seasonal components
+
+# Double-Exponential (Holt's) Model
+holt_model <- holt(
+  caur_train,
+  h = 10
+)
+
+# Plot Series with Forecasts
+autoplot(holt_model, 
+         series = "Double-Exponential Forecast",
+         alpha = 0.5) +
+  autolayer(caur_test, series = "Test Set") +
+  labs(
+    y = "Unemployment Rate (%)",
+    title = "Jan.'22 - Oct.'22 Double-Exponential Forecasts"
+  ) 
+
+# summary(holt_model)
+# Training Set Metrics:
+## RMSE: 0.07284146
+## AIC: 603.1837
+
+```
+
+```{r Double-Exponential Zoomed In}
+autoplot(holt_model, 
+         series = "Double-Exponential Forecast",
+         alpha = 0.5) +
+  autolayer(caur_test, series = "Test Set") +
+  labs(
+    y = "Unemployment Rate (%)",
+    title = "Jan.'22 - Oct.'22 Double-Exponential Forecasts"
+  ) + 
+  coord_cartesian(xlim = c(2021, 2024))
+```
+
+## Holt-Winter's Smoothing (Triple-Exponential Smoothing)
+```{r ETS Undifferenced Series}
+# Holt-Winter's Model vis ets()
+caur_ets <- ets(
+  caur_train,
+  model = "AAN",
+  damped = TRUE,
+  alpha = 0.75,
+)
+
+summary(caur_ets)
+# Automated Parameter Detection
+## Optimal Model Identified as: "A, Ad, N"
+## Optimal Alpha: 0.75
+# Model ANN, varying alphas:
+## Alpha = 0.10, RMSE = 0.308882
+## Alpha = 0.25, RMSE = 0.144880
+## Alpha = 0.50, RMSE = 0.084701
+## Alpha = 0.75, RMSE = 0.071456
+## Alpha = 0.90, RMSE = 0.073215
+```
+### Holt-Winter's Forecast
+```{r Holt-Winter's Model Forecasts & Plot}
+# 14 Month Forecast - Nov.'22 - Dec.'23
+caur_ets_forecast <- forecast(
+  caur_ets,
+  h = 10
+)
+
+# ETS Forecast Plot
+autoplot(caur_train,
+          series = "Training Partition") +
+  autolayer(caur_ets_forecast,
+            series = "Holt-Winter's Model Forecasts",
+            alpha = 0.4) +
+  autolayer(caur_test,
+            series = "Test Partition") +
+  labs(
+    y = "Unemployment Rate (%)",
+    title = "Holt-Winter's Model Forecasts (Jan.'22 - Oct.'22)"
+  )
+```
+
+```{r Holt-Winter's Forecast Plot Zoomed In}
+# ETS Forecast Plot
+autoplot(caur_train,
+          series = "Training Partition") +
+  autolayer(caur_ets_forecast,
+            series = "Holt-Winter's Model Forecasts",
+            alpha = 0.4) +
+  autolayer(caur_test,
+            series = "Test Partition") +
+  labs(
+    y = "Unemployment Rate (%)",
+    title = "Holt-Winter's Model Forecasts (Jan.'22 - Oct.'22)"
+  ) +
+  coord_cartesian(xlim = c(2021, 2023))
+```
+
+## ARIMA Model
+```{r ARIMA Model}
+
 ```
 
 
