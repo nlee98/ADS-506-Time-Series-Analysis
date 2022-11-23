@@ -13,6 +13,7 @@ library(fpp2)
 library(readr)
 library(zoo)
 library(tseries) # For adf test
+library(rugarch) # For autoarfima()
 ```
 
 # Importing the Data Set
@@ -192,7 +193,7 @@ _Note_: According to Shmueli and Lichtendahl (2018, p. 145), a strong positive l
 |   In addition, the lack of any patterns in the ACF plot suggests that there is no seasonality in the series.
 
 # Partial Autocorrelation Plot of the Raw Series
-```{r Partial Autocorrelation Plot of Raw Series}
+```{r pACF Plot of Raw Series}
 Pacf(caur_ts,
      main = "Partial Autocorrelation Plot")
 ```
@@ -211,7 +212,7 @@ summary(ar1_model)
 |   <mark>**_Warning:_**</mark> The slope coefficient of the AR(1) model is 0.9765. This value is fairly close to one. A random walk results in an AR(1) model with a slope coefficient equal to one. Therefore, this assessment supports the previous finding that the initial series may be a random walk.
 
 # Random Walk Assessment Via an ACF Plot of the Lag-1 Differenced Series
-```{r RandomWalk ACF Plot Test}
+```{r RandomWalk ACF Plot of Differenced Series Test}
 # Order-1 Differencing of the Series
 caur_ts_diff1 <- diff(caur_ts)
 
@@ -223,7 +224,7 @@ Acf(caur_ts_diff1,
 _Note_: If the ACF plot for all lags are near zero and within the significant value thresholds (shown above by dashed, horizontal blue lines), then the original series is most likely a random walk (Shmueli & Lichtendahl, 2018). In the above plot, the autocorrelation of the order-1 differenced series at lag-1 is above the threshold values; however, the value for the lag-1 autocorrelation of the differenced series is slightly above 0.2. The above plot does not conclusively indicate that the series is not a random walk.
 
 # Random Walk Assessment via ADF Test of Lag-1 Differenced Series
-```{r}
+```{r lag-1 differenced ADF Test}
 # ADF Test of Lag-1 Differenced Series
 adf.test(caur_ts_diff1)
 ```
@@ -232,7 +233,7 @@ adf.test(caur_ts_diff1)
 
 
 # Remove of Trend via lag-1 Differencing
-```{r}
+```{r Time plot with lag-1 differencing}
 # Time Plot of the Lag-1 Differenced Series
 autoplot(caur_ts_diff1) +
   labs(
@@ -286,7 +287,7 @@ autoplot(caur_rwf) +
 ```
 
 ## Double-Exponential Smoothing
-```{r}
+```{r Double-Exponential Model and Plot}
 # For series with trend but no seasonality
 # ACF plots revealed the series has no seasonal components
 
@@ -386,9 +387,128 @@ autoplot(caur_train,
 
 ## ARIMA Model
 ```{r ARIMA Model}
+# Automated ARIMA Parameters
+caur_autoARIMA <- auto.arima(caur_train)
+# summary(caur_autoARIMA)
+## Automatic parameter selection: ARIMA(5,0,3)
+## AIC: -1,370.7, RMSE: 0.06810
 
+# Manual ARIMA Parameter Search
+caur_arima <- Arima(
+  caur_train,
+  order = c(2,1,3)
+)
+# ARIMA (2,1,3)
+## AIC: -1,353.32, RMSE: 0.06991 -- 1.27% Change in AIC from automated model
+# ARIMA (2,1,4)
+## AIC: -1,363.21, RMSE: 0.06916
+# ARIMA (5,1,3)
+## AIC: -1,368.06, RMSE: 0.68588
+
+summary(caur_arima)
 ```
 
+#### Initial Manual Selection of ARIMA Parameters
+* p: 2 (PACF plot revealed 2 lags with significant partial autocorrelations)
+* d: 1 (1 order of differencing resulted in stationarity)
+* q: 3 (ACF plot showed multiple significant ACF values - use automated selection)
+
+### Various ARIMA Models' Forecasts Comparison
+```{r ARIMA Forecast Comparison}
+caur_autoARIMA_forecast <- forecast(
+  caur_autoARIMA,
+  h = 10
+)
+
+autoplot(fitted(caur_autoARIMA),
+         series = "Training Partition") +
+  autolayer(caur_autoARIMA$x,
+            colour = TRUE,
+            series = "Fitted Model") +
+  autolayer(caur_test,
+            series = "Test Partition",
+            alpha = 0.4) +
+  autolayer(caur_autoARIMA_forecast,
+            series = "Automated Model Forecasts") +
+  labs(
+    y = "Unemployment Rate (%)", 
+    title = ("Automated ARIMA Model (ARIMA(5,0,3) Test Set Forecasts")
+  )
+```
+
+```{r Manual ARIMA Model Fitting and Plot}
+caur_arima_forecast <- forecast(
+  caur_arima,
+  h = 10
+)
+
+autoplot(fitted(caur_arima),
+         series = "Training Partition") +
+  autolayer(caur_arima$x,
+            colour = TRUE,
+            series = "Fitted Model") +
+  autolayer(caur_test,
+            series = "Test Partition",
+            alpha = 0.4) +
+  autolayer(caur_arima_forecast,
+            series = "Manual Model Forecasts") +
+  labs(
+    y = "Unemployment Rate (%)", 
+    title = ("Manual ARIMA Model (ARIMA(2,1,3) Test Set Forecasts")
+  )
+```
+
+```{r ARIMA Forecasts Comparisons}
+autoplot(caur_test,
+          series = "Test Partition") +
+  autolayer(caur_autoARIMA_forecast,
+            series = "Automated ARIMA Model Forecasts",
+            alpha = 0.3) +
+  autolayer(caur_arima_forecast,
+            series = "Manual ARIMA Model Forecasts",
+            alpha = 0.3) +
+  labs(
+    y = "Unemployment Rate (%)",
+    title = "Comparing Automated and Manual ARIMA Model Forecasts"
+  )
+```
+
+__Note__: Both the arima models, where parameters were selected manually and automatically, fail to accurately forecast values in the test partition.
+
+## ARFIMA Model
+```{r ARFIMA Model}
+caur_autoARFIMA <- autoarfima(
+  caur_train,
+  ar.max = 2,
+  ma.max = 3,
+  criterion = "AIC",
+  method = "full",
+  arfima = TRUE
+)
+
+# ARFIMA Forecast
+caur_autoARFIMA_forecast <- arfimaforecast(
+  caur_autoARFIMA$fit,
+  n.ahead = 10
+)
+
+caur_autoARFIMA_forecast_ts <-ts(
+  caur_autoARFIMA_forecast@forecast$seriesFor,
+  start = c(2022, 1),
+  frequency = 12)
+
+# ARFIMA Forecast Plot
+autoplot(caur_test) +
+  autolayer(caur_autoARFIMA_forecast_ts,
+            series = "Automated ARFIMA Model Forecasts") +
+  labs(
+    y = "Unemployment Rate (%)",
+    title = "ARFIMA Model Forecasts Jan.'22 - Oct.'22"
+  )
+
+# Model Residuals
+# caur_autoARFIMA_forecast@model$modeldata$residuals)
+```
 
 
 **References**
