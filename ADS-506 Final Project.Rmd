@@ -24,12 +24,13 @@ caur_df <- read_csv(
   col_types = cols(DATE = col_date(format = "%Y-%m-%d")))
 ```
 
-# Series Summary Statistics
+# Exploratory Data Analysis (EDA)
+## Series Summary Statistics
 ```{r Summary Statistics}
 summary(caur_df)
 ```
 
-# Distribution of the Target Variable
+## Distribution of the Target Variable
 ```{r Histogram of CAUR}
 hist(caur_df$CAUR,
      main = "Histogram of California Unemployment Rate",
@@ -39,7 +40,7 @@ hist(caur_df$CAUR,
 
 _Note_: The above plot indicates that the distribution of the target variable is skewed right.
 
-# Log + 1 Transformation of the Dependent Variable
+## Log + 1 Transformation of the Dependent Variable
 ```{r}
 hist(log(caur_df$CAUR + 1),
      main = "Histogram of Log+1 Transformed California Unemployment Rate",
@@ -47,13 +48,13 @@ hist(log(caur_df$CAUR + 1),
      col = "blue")
 ```
 
-# Log+1 Transformed Measures of Centrality
+## Log+1 Transformed Measures of Centrality
 ```{r}
 mean(log(caur_df$CAUR + 1))
 median(log(caur_df$CAUR + 1))
 ```
 
-# Yearly Average Unemployment Rate (%)
+## Yearly Average Unemployment Rate (%)
 ```{r CAUR-Yearly Statistics}
 # Create a New Yearly Dataframe #
 caur_yearly <- caur_df
@@ -81,7 +82,7 @@ ggplot(caur_yearly_stats, aes(Year, Avg_UR, group = 1)) +
       max(caur_yearly_stats$Year), by = 5), 1))
 ```
 
-# Time Plot of California Unemployment Rate
+## Time Plot of California Unemployment Rate
 ```{r Raw Data - Time Plot}
 # Convert Raw Data to Time Series #
 caur_ts <- ts(
@@ -106,7 +107,7 @@ autoplot(caur_ts) +
   theme_minimal()
 ```
 
-# Distribution of Unemployment Rate by Month
+## Distribution of Unemployment Rate by Month
 ```{r CAUR-Monthly Box Plot}
 # Create Column for Month #
 caur_monthly <- caur_df 
@@ -131,22 +132,11 @@ ggplot(caur_monthly, aes(reorder(Month, desc(Month)), CAUR)) +
 ```
 
 ```{r Monthly Outliers}
+# Identification of Outliers by Date
 caur_df[caur_df$CAUR > 13, ]
 ```
 
-# Outlier Handling with tsclean()
-```{r Outlier Resolution and Time Plot}
-# Resolve outliers via tsclean()
-caur_ts_nooutlier <- tsclean(caur_ts)
-
-# Time Plot without Outliers
-autoplot(caur_ts_nooutlier) +
-  labs(title = "Monthly Unemployment Rate - Outliers Removed and Forecasted",
-       x = "Time",
-       y = "Unemployment Rate (%)")
-```
-
-# Decomposition Plots
+## Decomposition Plots
 ```{r Raw Data - Additive Decomposition Plot}
 # Decompose Time Series into Components #
 caur_decomp <- decompose(caur_ts)
@@ -163,7 +153,20 @@ caur_multi_decomp <- decompose(caur_ts, type = "multiplicative")
 plot(caur_multi_decomp)
 ```
 
-# Decomposition Plot for Series where Outliers are Resolved
+# Pre-Processing
+## Outlier Handling with tsclean()
+```{r Outlier Resolution and Time Plot}
+# Resolve outliers via tsclean()
+caur_ts_nooutlier <- tsclean(caur_ts)
+
+# Time Plot without Outliers
+autoplot(caur_ts_nooutlier) +
+  labs(title = "Monthly Unemployment Rate - Outliers Removed and Forecasted",
+       x = "Time",
+       y = "Unemployment Rate (%)")
+```
+
+## Decomposition Plot for Series where Outliers are Resolved
 ```{r Decomposition Plot of Outlier-Resolved Series}
 # Decompose Time Series into Components #
 caur_nooutlier_decomp <- decompose(
@@ -173,7 +176,8 @@ caur_nooutlier_decomp <- decompose(
 plot(caur_nooutlier_decomp)
 ```
 
-# Test for Stationarity - Augmented Dickey-Fuller (ADF) Test
+# Series Characterization
+## Test for Stationarity - Augmented Dickey-Fuller (ADF) Test
 ```{r ADF Test of Raw Series}
 adf.test(caur_ts)
 ```
@@ -181,7 +185,7 @@ adf.test(caur_ts)
 |   The null hypothesis of the Augmented Dickey-Fuller (ADF) test is that the series is non-stationary, where the alternative hypothesis is that the series is stationary. The null hypothesis can be rejected if the p-value is less than a significant value, typically 0.05. Here, the p-value is 0.1525, much greater than 0.05. Therefore, the null hypothesis cannot be rejected, indicating the series is non-stationary.
 
 
-# Assessing if the Series is a Random Walk - Autocorrelation (ACF) Plot
+## Assessing if the Series is a Random Walk - Autocorrelation (ACF) Plot
 ```{r Series ACF Plot}
 Acf(caur_ts,
     main = "Autocorrelation Plot")
@@ -192,7 +196,7 @@ _Note_: According to Shmueli and Lichtendahl (2018, p. 145), a strong positive l
 |   The slow decrease in autocorrelation values as lag values increase also support the hypothesis that there is a trend in the data. More importantly, the slow decay to zero of the autocorrelation values suggest that the series may be a random walk. If this is the case, forecasting future values will be more challenging than expected.
 |   In addition, the lack of any patterns in the ACF plot suggests that there is no seasonality in the series.
 
-# Partial Autocorrelation Plot of the Raw Series
+## Partial Autocorrelation Plot of the Raw Series
 ```{r pACF Plot of Raw Series}
 Pacf(caur_ts,
      main = "Partial Autocorrelation Plot")
@@ -200,7 +204,7 @@ Pacf(caur_ts,
 
 |   The partial autocorrelation (pacf) plot suggests that a first or second-order autoregressive model is most suitable for forecasting the series, based on the lags that have partial autocorrelation values over the thresholds. 
 
-# Random Walk Test via AR(1) Slope Coefficient Hypothesis
+## Random Walk Test via AR(1) Slope Coefficient Hypothesis
 ```{r RandomWalk AR(1) Coef. Test}
 # AR(1) Model
 ar1_model <- arima(caur_ts, order = c(1,0,0))
@@ -211,7 +215,7 @@ summary(ar1_model)
 
 |   <mark>**_Warning:_**</mark> The slope coefficient of the AR(1) model is 0.9765. This value is fairly close to one. A random walk results in an AR(1) model with a slope coefficient equal to one. Therefore, this assessment supports the previous finding that the initial series may be a random walk.
 
-# Random Walk Assessment Via an ACF Plot of the Lag-1 Differenced Series
+## Random Walk Assessment Via an ACF Plot of the Lag-1 Differenced Series
 ```{r RandomWalk ACF Plot of Differenced Series Test}
 # Order-1 Differencing of the Series
 caur_ts_diff1 <- diff(caur_ts)
@@ -223,7 +227,7 @@ Acf(caur_ts_diff1,
 
 _Note_: If the ACF plot for all lags are near zero and within the significant value thresholds (shown above by dashed, horizontal blue lines), then the original series is most likely a random walk (Shmueli & Lichtendahl, 2018). In the above plot, the autocorrelation of the order-1 differenced series at lag-1 is above the threshold values; however, the value for the lag-1 autocorrelation of the differenced series is slightly above 0.2. The above plot does not conclusively indicate that the series is not a random walk.
 
-# Random Walk Assessment via ADF Test of Lag-1 Differenced Series
+## Random Walk Assessment via ADF Test of Lag-1 Differenced Series
 ```{r lag-1 differenced ADF Test}
 # ADF Test of Lag-1 Differenced Series
 adf.test(caur_ts_diff1)
@@ -232,7 +236,7 @@ adf.test(caur_ts_diff1)
 |   The p-value of the ADF test on the lag-1 differenced series is 0.01, lower than the significance threshold of 0.05. This result indicates that the null hypothesis can be rejected in favor of the alternative hypothesis; thus, the differnced series is stationary. If the lag-1 differenced series results in stationarity, the undifferenced series is most likely a random walk (Brownlee, 2017).
 
 
-# Remove of Trend via lag-1 Differencing
+## Remove of Trend via lag-1 Differencing
 ```{r Time plot with lag-1 differencing}
 # Time Plot of the Lag-1 Differenced Series
 autoplot(caur_ts_diff1) +
@@ -245,36 +249,39 @@ autoplot(caur_ts_diff1) +
 # Data Partitioning
 ```{r Data Partitioning}
 # Use the series where outliers have been resolved
-# Training Set: Jan. 1976 to Dec. 2021
+# Training Set: Jan. 1976 to Dec. 2018
 caur_train <- window(
   caur_ts_nooutlier,
   start = c(1976, 1),
-  end = c(2021, 12)
+  end = c(2018, 12)
 )
 
-# Test Set: Jan. 2022 - Oct. 2022
+# Test Set: Jan. 2019 - Oct. 2022
+# 46 months
 caur_test <- window(
   caur_ts_nooutlier,
-  start = c(2022, 1)
+  start = c(2019, 1)
 )
 ```
 
-
-# Modeling
+# Forecasting Methods
 ## Naive Forecast Modeling
 ```{r Naive Forecast}
 # rwf(): Naive and Random Walk Forecasting
 caur_rwf <- rwf(
-  caur_ts_nooutlier,
-  h = 14
+  caur_train,
+  h = 46
 )
 
-autoplot(caur_rwf) +
+autoplot(caur_rwf,
+         alpha = 0.3,
+         series = "Naive Forecast") +
+  autolayer(caur_test,
+            series = "Test Partition") +
   labs(
     y = "Unemployment Rate (%)",
-    title = "Naive Forecast for Nov.'22 Until Dec.'23"
+    title = "Naive Forecast of Test Partition"
   ) 
-
 ```
 
 ```{r Naive Forecast Zoomed In}
@@ -294,7 +301,7 @@ autoplot(caur_rwf) +
 # Double-Exponential (Holt's) Model
 holt_model <- holt(
   caur_train,
-  h = 10
+  h = 46
 )
 
 # Plot Series with Forecasts
@@ -304,26 +311,26 @@ autoplot(holt_model,
   autolayer(caur_test, series = "Test Set") +
   labs(
     y = "Unemployment Rate (%)",
-    title = "Jan.'22 - Oct.'22 Double-Exponential Forecasts"
+    title = "Double-Exponential Forecasts"
   ) 
 
 # summary(holt_model)
 # Training Set Metrics:
-## RMSE: 0.07284146
-## AIC: 603.1837
+## RMSE: 0.063360
+## AIC: 193.5718
 
 ```
 
 ```{r Double-Exponential Zoomed In}
 autoplot(holt_model, 
          series = "Double-Exponential Forecast",
-         alpha = 0.5) +
+         alpha = 0.3) +
   autolayer(caur_test, series = "Test Set") +
   labs(
     y = "Unemployment Rate (%)",
-    title = "Jan.'22 - Oct.'22 Double-Exponential Forecasts"
+    title = "Double-Exponential Forecasts"
   ) + 
-  coord_cartesian(xlim = c(2021, 2024))
+  coord_cartesian(xlim = c(2018, 2024))
 ```
 
 ## Holt-Winter's Smoothing (Triple-Exponential Smoothing)
@@ -333,26 +340,27 @@ caur_ets <- ets(
   caur_train,
   model = "AAN",
   damped = TRUE,
-  alpha = 0.75,
+  alpha = 0.75
 )
 
-summary(caur_ets)
+# summary(caur_ets)
 # Automated Parameter Detection
 ## Optimal Model Identified as: "A, Ad, N"
 ## Optimal Alpha: 0.75
 # Model ANN, varying alphas:
-## Alpha = 0.10, RMSE = 0.308882
-## Alpha = 0.25, RMSE = 0.144880
-## Alpha = 0.50, RMSE = 0.084701
-## Alpha = 0.75, RMSE = 0.071456
-## Alpha = 0.90, RMSE = 0.073215
+## Alpha = 0.10, AIC = 1,914.83, RMSE = 0.27879
+## Alpha = 0.25, AIC = 1,104.42, RMSE = 0.12713
+## Alpha = 0.50, AIC = 546.56, RMSE = 0.07404
+## Alpha = 0.75, AIC = 382.30, RMSE = 0.06315
+## Alpha = 0.90, AIC = 403.30, RMSE = 0.06444
 ```
+
 ### Holt-Winter's Forecast
-```{r Holt-Winter's Model Forecasts & Plot}
-# 14 Month Forecast - Nov.'22 - Dec.'23
+```{r HoltWinter Model Forecasts and Plot}
+# 166 Month Forecast - Nov.'22 - Dec.'23
 caur_ets_forecast <- forecast(
   caur_ets,
-  h = 10
+  h = 46
 )
 
 # ETS Forecast Plot
@@ -365,11 +373,11 @@ autoplot(caur_train,
             series = "Test Partition") +
   labs(
     y = "Unemployment Rate (%)",
-    title = "Holt-Winter's Model Forecasts (Jan.'22 - Oct.'22)"
+    title = "Holt-Winter's Model Forecasts"
   )
 ```
 
-```{r Holt-Winter's Forecast Plot Zoomed In}
+```{r HoltWinters Forecast Plot Zoomed In}
 # ETS Forecast Plot
 autoplot(caur_train,
           series = "Training Partition") +
@@ -380,44 +388,45 @@ autoplot(caur_train,
             series = "Test Partition") +
   labs(
     y = "Unemployment Rate (%)",
-    title = "Holt-Winter's Model Forecasts (Jan.'22 - Oct.'22)"
+    title = "Holt-Winter's Model Forecasts"
   ) +
-  coord_cartesian(xlim = c(2021, 2023))
+  coord_cartesian(xlim = c(2018, 2023))
 ```
 
 ## ARIMA Model
 ```{r ARIMA Model}
 # Automated ARIMA Parameters
-caur_autoARIMA <- auto.arima(caur_train)
+caur_autoARIMA <- auto.arima(
+  caur_train)
 # summary(caur_autoARIMA)
-## Automatic parameter selection: ARIMA(5,0,3)
-## AIC: -1,370.7, RMSE: 0.06810
+## Automatic parameter selection: ARIMA(2,0,2)(1,0,2)[12]
+## AIC: -1,396.23, RMSE: 0.06084
 
 # Manual ARIMA Parameter Search
 caur_arima <- Arima(
   caur_train,
-  order = c(2,1,3)
+  order = c(2,1,2)
 )
-# ARIMA (2,1,3)
-## AIC: -1,353.32, RMSE: 0.06991 -- 1.27% Change in AIC from automated model
-# ARIMA (2,1,4)
-## AIC: -1,363.21, RMSE: 0.06916
-# ARIMA (5,1,3)
-## AIC: -1,368.06, RMSE: 0.68588
 
-summary(caur_arima)
+# summary(caur_arima)
+# ARIMA (2,1,2)
+## AIC: -1,380.23, RMSE: 0.06257
+# ARIMA (2,1,3)
+## AIC: -1,377.41, RMSE: 0.06263
+# ARIMA (2,1,4)
+## AIC: -1,381.47, RMSE: 0.06225
 ```
 
 #### Initial Manual Selection of ARIMA Parameters
 * p: 2 (PACF plot revealed 2 lags with significant partial autocorrelations)
 * d: 1 (1 order of differencing resulted in stationarity)
-* q: 3 (ACF plot showed multiple significant ACF values - use automated selection)
+* q: 2 (ACF plot showed multiple significant ACF values - use automated selection)
 
 ### Various ARIMA Models' Forecasts Comparison
 ```{r ARIMA Forecast Comparison}
 caur_autoARIMA_forecast <- forecast(
   caur_autoARIMA,
-  h = 10
+  h = 46
 )
 
 autoplot(fitted(caur_autoARIMA),
@@ -426,35 +435,35 @@ autoplot(fitted(caur_autoARIMA),
             colour = TRUE,
             series = "Fitted Model") +
   autolayer(caur_test,
-            series = "Test Partition",
-            alpha = 0.4) +
+            series = "Test Partition") +
   autolayer(caur_autoARIMA_forecast,
-            series = "Automated Model Forecasts") +
+            series = "Automated Model Forecasts",
+            alpha = 0.4) +
   labs(
     y = "Unemployment Rate (%)", 
-    title = ("Automated ARIMA Model (ARIMA(5,0,3) Test Set Forecasts")
+    title = ("Automated ARIMA(2,0,2)(1,0,2)[12] Model Test Set Forecasts")
   )
 ```
 
 ```{r Manual ARIMA Model Fitting and Plot}
 caur_arima_forecast <- forecast(
   caur_arima,
-  h = 10
+  h = 46
 )
 
 autoplot(fitted(caur_arima),
-         series = "Training Partition") +
+         series = "Fitted Model") +
   autolayer(caur_arima$x,
             colour = TRUE,
-            series = "Fitted Model") +
+            series = "Training Partition") +
   autolayer(caur_test,
-            series = "Test Partition",
-            alpha = 0.4) +
+            series = "Test Partition") +
   autolayer(caur_arima_forecast,
-            series = "Manual Model Forecasts") +
+            series = "Manual Model Forecasts",
+            alpha = 0.4) +
   labs(
     y = "Unemployment Rate (%)", 
-    title = ("Manual ARIMA Model (ARIMA(2,1,3) Test Set Forecasts")
+    title = ("Manual ARIMA Model (ARIMA(2,1,2) Test Set Forecasts")
   )
 ```
 
@@ -473,7 +482,7 @@ autoplot(caur_test,
   )
 ```
 
-__Note__: Both the arima models, where parameters were selected manually and automatically, fail to accurately forecast values in the test partition.
+__Note__: The test partition is fully captured within the 95% confidence interval of both ARIMA models. However, more of the data is captured in the 80% confidence interval of the automated model than in 80% confidence interval of the manual model. Thus, moving forward, only the automated model will be considered.
 
 ## ARFIMA Model
 ```{r ARFIMA Model}
@@ -489,12 +498,12 @@ caur_autoARFIMA <- autoarfima(
 # ARFIMA Forecast
 caur_autoARFIMA_forecast <- arfimaforecast(
   caur_autoARFIMA$fit,
-  n.ahead = 10
+  n.ahead = 46
 )
 
-caur_autoARFIMA_forecast_ts <-ts(
+caur_autoARFIMA_forecast_ts <- ts(
   caur_autoARFIMA_forecast@forecast$seriesFor,
-  start = c(2022, 1),
+  start = c(2019, 1),
   frequency = 12)
 
 # ARFIMA Forecast Plot
@@ -503,11 +512,162 @@ autoplot(caur_test) +
             series = "Automated ARFIMA Model Forecasts") +
   labs(
     y = "Unemployment Rate (%)",
-    title = "ARFIMA Model Forecasts Jan.'22 - Oct.'22"
+    title = "ARFIMA Model Test Set Forecasts"
   )
 
 # Model Residuals
 # caur_autoARFIMA_forecast@model$modeldata$residuals)
+```
+
+## All Models Assessed (Test Partition Time Plot)
+```{r All Models Test Partition Time Plot}
+# Naive Forecast
+caur_naive <- rwf(
+  caur_train, h = 46)
+
+autoplot(caur_test,
+         series = "Test Partition") +
+  autolayer(caur_naive$mean,
+            series = "Naive Forecast") +
+  autolayer(holt_model$mean,
+            series = "Double-Exponential") +
+  autolayer(caur_ets_forecast$mean,
+            series = "Holt-Winters Model") +
+  autolayer(caur_autoARIMA_forecast,
+            series = "ARIMA(2,0,2)(1,0,2)[12] Model",
+            alpha = 0.3) +
+  autolayer(caur_autoARFIMA_forecast_ts,
+            series = "ARFIMA Model") +
+  labs(
+    y = "Unemployment Rate (%)",
+    title = "All Models Test Partition Forecast"
+  )
+```
+
+# Evaluation Metrics
+```{r RMSE and MAPE Calculation}
+# Calculate Residuals #
+# Naive Forecast Residuals #
+naive_resid <- caur_test - caur_rwf$mean
+
+# Double-Exponential/Holt's Model Residuals #
+holt_resid <- caur_test - holt_model$mean
+
+# Holt-Winters Model Residuals #
+ets_resid <- caur_test - caur_ets_forecast$mean
+
+# ARIMA(2,0,2)(1,0,2)[12] Residuals #
+arima_resid <- caur_test - caur_autoARIMA_forecast$mean
+
+# ARFIMA Residuals #
+arfima_resid <- caur_test - caur_autoARFIMA_forecast_ts
+
+# RMSE = (sqrt(mean(errors^2))) #
+rmse <- function(resid_series) {
+  calculated_rmse <- sqrt(mean(resid_series^2))
+  return(calculated_rmse)
+}
+
+## Training Set RMSE ##
+# naive_train_rmse <- rmse(caur_rwf$residuals)
+holtExp_train_rmse <- rmse(holt_model$residuals)
+ets_train_rmse <- rmse(caur_ets$residuals)
+arima_train_rmse <- rmse(caur_autoARIMA$residuals)
+arfima_train_rmse <- rmse(
+  caur_autoARFIMA_forecast@model$modeldata$residuals)
+
+## Test Set RMSE ##
+naive_rmse <- rmse(naive_resid)
+holt_rmse <- rmse(holt_resid)
+ets_rmse <- rmse (ets_resid)
+arima_rmse <- rmse(arima_resid)
+arfima_rmse <- rmse(arfima_resid)
+
+# MAPE = sum(abs(errors/actual)) * 100 * 1/test_size #
+mape <- function(resid_series, actual_series) {
+  calcualted_mape <- sum(
+    abs(resid_series/actual_series)) * 100 * (1/length(actual_series))
+  return(calcualted_mape)
+}
+
+## Training Set MAPE ##
+# naive_train_mape <- mape(caur_rwf$residuals, caur_train)
+holtExp_train_mape <- mape(holt_model$residuals, caur_train)
+ets_train_mape <- mape(caur_ets$residuals, caur_train)
+arima_train_mape <- mape(caur_autoARIMA$residuals, caur_train)
+arfima_train_mape <- mape(
+  caur_autoARFIMA_forecast@model$modeldata$residuals, caur_train)
+
+
+## Test Set MAPE ##
+naive_mape <- mape(naive_resid, caur_test)
+holt_mape <- mape(holt_resid, caur_test)
+ets_mape <- mape(ets_resid, caur_test)
+arima_mape <- mape(arima_resid, caur_test)
+arfima_mape <- mape(arfima_resid, caur_test)
+
+
+# Evaluation Metrics Table #
+model_eval_metrics <- data.frame(
+  Models = c("Naive", "Double-Exponential Smoothing", "Holt-Winters",
+             "ARIMA(2,0,2)(1,0,2)[12]", "ARFIMA"),
+  Train_RMSE = c(0.1286977, holtExp_train_rmse, ets_train_rmse, 
+                 arima_train_rmse, arfima_train_rmse),
+  Test_RMSE = c(naive_rmse, holt_rmse, ets_rmse, 
+                arima_rmse, arfima_rmse),
+  Train_MAPE = c(1.222649, holtExp_train_mape, ets_train_mape, 
+                 arima_train_mape, arfima_train_mape),
+  Test_MAPE = c(naive_mape, holt_mape, ets_mape, 
+                arima_mape, arfima_mape)
+)
+
+model_eval_metrics
+```
+
+# Final ARFIMA Model
+```{r Final Model: Fitting and Forecast}
+# Final Model Forecast #
+caur_fulldata_arfima <- autoarfima(
+  caur_ts,
+  ar.max = 2,
+  ma.max = 3,
+  criterion = "AIC",
+  method = "full",
+  arfima = TRUE
+)
+
+# ARFIMA Full Data Forecast
+caur_fulldata_ARFIMA_forecast <- arfimaforecast(
+  caur_fulldata_arfima$fit,
+  n.ahead = 14
+)
+
+# Convert forecast to time series
+caur_fulldata_ARFIMA_forecast_ts <- ts(
+  caur_fulldata_ARFIMA_forecast@forecast$seriesFor,
+  start = c(2022, 11),
+  frequency = 12)
+
+# ARFIMA Forecast Plot
+autoplot(caur_ts) +
+  autolayer(caur_fulldata_ARFIMA_forecast_ts,
+            series = "ARFIMA Model Forecasts") +
+  labs(
+    y = "Unemployment Rate (%)",
+    title = "ARFIMA Model Forecasts for Nov.'22 - Dec.'23"
+  )
+```
+
+```{r Final Forecast Plot Zoomed In}
+# ARFIMA Forecast Plot
+autoplot(caur_ts) +
+  autolayer(caur_fulldata_ARFIMA_forecast_ts,
+            series = "ARFIMA Model Forecasts") +
+  labs(
+    y = "Unemployment Rate (%)",
+    title = "ARFIMA Model Forecasts for Nov.'22 - Dec.'23"
+  ) +
+  coord_cartesian(xlim = c(2022, 2024))
 ```
 
 
