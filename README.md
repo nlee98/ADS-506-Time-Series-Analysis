@@ -20,7 +20,7 @@ The preliminary objective of this study is to accurately forecast future unemplo
 
 ## Project Description
 * The [California Unemployment Rate](https://fred.stlouisfed.org/series/CAUR) dataset is provided by Federal Reserve Economic Data (FRED).
-*	The following forecastiong methods were assessed for optimality in forecasting unemployment rates in California:
+*	The following forecasting methods were assessed for optimality in forecasting unemployment rates in California:
     * Naive Forecast
     * Double-Exponential Smoothing
     * Holt-Winters Method
