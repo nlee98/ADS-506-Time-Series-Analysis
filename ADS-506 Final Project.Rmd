@@ -1,7 +1,8 @@
 ---
-title: "ADS-506 Final Project"
-author: "Nicholas Lee"
-date: "11/5/2022"
+title: "Appendix B: R Markdown Code"
+subtitle: "ADS-506 Final Project"
+author: "Nicholas Lee & Hoori Javadnia"
+date: "12/12/2022"
 output: html_document
 ---
 
@@ -405,10 +406,18 @@ caur_autoARIMA <- auto.arima(
 # Manual ARIMA Parameter Search
 caur_arima <- Arima(
   caur_train,
-  order = c(2,1,2)
+  order = c(2,1,4)
 )
 
 # summary(caur_arima)
+# ARIMA (1,0,1)
+## AIC: -890.51, RMSE: 0.10067
+# ARIMA (1,1,1)
+## AIC: -1,331.36, RMSE: 0.06590
+# ARIMA (1,1,2)
+## AIC: -1,380.53, RMSE: 0.06268
+# ARIMA (2,0,2)
+## AIC: -1,382.37, RMSE: 0.06212
 # ARIMA (2,1,2)
 ## AIC: -1,380.23, RMSE: 0.06257
 # ARIMA (2,1,3)
@@ -418,7 +427,7 @@ caur_arima <- Arima(
 ```
 
 #### Initial Manual Selection of ARIMA Parameters
-* p: 2 (PACF plot revealed 2 lags with significant partial autocorrelations)
+* p: 1 (PACF plot revealed 1 lag with significant partial autocorrelations)
 * d: 1 (1 order of differencing resulted in stationarity)
 * q: 2 (ACF plot showed multiple significant ACF values - use automated selection)
 
@@ -463,7 +472,7 @@ autoplot(fitted(caur_arima),
             alpha = 0.4) +
   labs(
     y = "Unemployment Rate (%)", 
-    title = ("Manual ARIMA Model (ARIMA(2,1,2) Test Set Forecasts")
+    title = ("Manual ARIMA Model ARIMA(2,1,4) Test Set Forecasts")
   )
 ```
 
@@ -668,6 +677,63 @@ autoplot(caur_ts) +
     title = "ARFIMA Model Forecasts for Nov.'22 - Dec.'23"
   ) +
   coord_cartesian(xlim = c(2022, 2024))
+```
+
+```{r ARFIMA Forecats Values}
+caur_fulldata_ARFIMA_forecast_ts
+```
+
+
+# Seasonal-ARIMA Future Forecasts
+```{r Seasonal ARIMA Future Forecasts}
+# Create ARIMA(2,0,2)(1,0,2)[12] Model
+caur_seasonal_arima <- Arima(
+  caur_ts,
+  order = c(2,0,2),
+  seasonal = c(1,0,2)
+)
+
+# Forecast 14 Months into the future
+caur_seasonal_arima_forecast <- forecast(
+  caur_seasonal_arima,
+  h = 14
+)
+
+# Plot Future Forecast
+autoplot(caur_ts) +
+  autolayer(caur_seasonal_arima_forecast,
+            series = "2023 Forecast") +
+  labs(
+    y = "Unemployment Rate (%)",
+    title = "ARIMA(2,0,2)(1,0,2) Forecast Nov.'22 - Dec.'23"
+  )
+```
+
+```{r Seasonal ARIMA Forecast Plot Zoomed In}
+# Plot Future Forecast
+autoplot(caur_ts) +
+  autolayer(caur_seasonal_arima_forecast,
+            series = "2023 Forecast") +
+  labs(
+    y = "Unemployment Rate (%)",
+    title = "ARIMA(2,0,2)(1,0,2) Forecast Nov.'22 - Dec.'23"
+  ) +
+  coord_cartesian(xlim = c(2021,2024))
+```
+
+# Future Forecasts - AFRIMA and ARIMA Overlay
+```{r}
+autoplot(caur_ts) +
+  autolayer(caur_seasonal_arima_forecast,
+            alpha = 0.3,
+            series = "2023 ARIMA Forecast") +
+  autolayer(caur_fulldata_ARFIMA_forecast_ts,
+            series = "ARFIMA Model Forecasts") +
+  labs(
+    y = "Unemployment Rate (%)",
+    title = "ARIMA and ARFIMA Future Forecast (Nov.'22 - Dec,'23) Overlay"
+  ) +
+  coord_cartesian(xlim = c(2021,2024))
 ```
 
 
