@@ -1,7 +1,7 @@
 ---
 title: "Appendix B: R Markdown Code"
 subtitle: "ADS-506 Final Project"
-author: "Nicholas Lee & Hoori Javadnia"
+author: "Nicholas Lee"
 date: "12/12/2022"
 output: html_document
 ---
@@ -736,10 +736,107 @@ autoplot(caur_ts) +
   coord_cartesian(xlim = c(2021,2024))
 ```
 
+## Visualizations for Presentation 
+```{r Line Plot: Colored by Recession Periods - Future Forecasts}
+autoplot(caur_ts) +
+  autolayer(caur_seasonal_arima_forecast,
+            alpha = 0.3,
+            series = "2023 ARIMA Forecast") +
+  autolayer(caur_fulldata_ARFIMA_forecast_ts,
+            series = "ARFIMA Model Forecasts") +
+  annotate("rect", fill = "grey", alpha = 0.5, 
+        xmin = 1980, xmax = 1980 + 7/12,
+        ymin = -Inf, ymax = Inf) +
+   annotate("rect", fill = "grey", alpha = 0.5, 
+        xmin = 1981 + 7/12, xmax = 1982 + 11/12,
+        ymin = -Inf, ymax = Inf) +
+   annotate("rect", fill = "grey", alpha = 0.5, 
+        xmin = 1990 + 7/12, xmax = 1991 + 3/12,
+        ymin = -Inf, ymax = Inf) +
+   annotate("rect", fill = "grey", alpha = 0.5, 
+        xmin = 2001 + 3/12, xmax = 2001 + 11/12,
+        ymin = -Inf, ymax = Inf) +
+   annotate("rect", fill = "grey", alpha = 0.5, 
+        xmin = 2007 + 7/12, xmax = 2009 + 6/12,
+        ymin = -Inf, ymax = Inf) +
+  labs(
+    y = "Unemployment Rate (%)",
+    title = "ARIMA and ARFIMA Future Forecast (Nov.'22 - Dec,'23) Overlay"
+  ) +
+  theme(legend.position = "bottom") +
+  theme_bw()
+```
+
+_Note_: Recessions occurred:
+* Jan. 1980 - July 1980
+* July 1981 - Nov. 1982
+* July 1990 - Mar. 1991
+* Mar. 2001 - Nov. 2001
+* Dec. 2007 - June 2009
+
+```{r Line Plot: Raw Series with Recession Periods}
+autoplot(caur_ts) +
+  annotate("rect", fill = "red", alpha = 0.5, 
+        xmin = 1980, xmax = 1980 + 7/12,
+        ymin = -Inf, ymax = Inf) +
+  annotate("rect", fill = "red", alpha = 0.5, 
+        xmin = 1981 + 7/12, xmax = 1982 + 11/12,
+        ymin = -Inf, ymax = Inf) +
+  annotate("rect", fill = "red", alpha = 0.5, 
+        xmin = 1990 + 7/12, xmax = 1991 + 3/12,
+        ymin = -Inf, ymax = Inf) +
+  annotate("rect", fill = "red", alpha = 0.5, 
+        xmin = 2001 + 3/12, xmax = 2001 + 11/12,
+        ymin = -Inf, ymax = Inf) +
+  annotate("rect", fill = "red", alpha = 0.5, 
+        xmin = 2007 + 7/12, xmax = 2009 + 6/12,
+        ymin = -Inf, ymax = Inf) +
+  labs(
+    y = "Unemployment Rate (%)",
+    title = "California Unemployment Rates Jan. 1976 - Oct. 2022"
+  ) +
+  theme(legend.position = "bottom") +
+  theme_bw()
+```
+
+```{r}
+autoplot(caur_ts) +
+  autolayer(forecast(rwf(caur_ts, h = 14))$mean,
+            series = "naive",
+            lty = 2,
+            lwd = 1) +
+  autolayer(holt(caur_ts, h = 14)$mean,
+            series = "Double-Exponential",
+            lty = 2,
+            lwd = 1) +
+  autolayer(forecast(ets(
+    caur_ts, model = "AAN", damped = TRUE, alpha = 0.75), h = 14)$mean,
+    series = "Holt-Winter's",
+    lty = 2,
+    lwd = 1) +
+  autolayer(caur_seasonal_arima_forecast$mean,
+            series = "ARIMA",
+            lty = 2,
+            lwd = 1) +
+  autolayer(caur_fulldata_ARFIMA_forecast_ts,
+            series = "ARFIMA",
+            lty = 2,
+            lwd = 1) +
+  labs(
+    y = "Unemployment Rate (%)",
+    title = "Expected Future Unemployment Rates"
+  ) +
+  coord_cartesian(xlim = c(2009, 2024)) +
+  theme(legend.position = "bottom")
+```
+
+
 
 **References**
 
 Brownlee, J. (2017). _A gentle introduction to the random walk for times series forecasting with python_. Machine Learning Mastery. Retrieved November 15, 2022, from https://machinelearningmastery.com/gentle-introduction-random-walk-times-series-forecasting-python/ 
+
+Hamilton, J. D. (n.d.). _The Econbrowser Recession Indicator Index_. Econbrowser. Retrieved December 1, 2022, from https://econbrowser.com/recession-index 
 
 
 Shmueli, G., & Lichtendahl Jr, K. C. (2018). _Practical time series forecasting with r: A hands-on guide_. Axelrod Schnall Publishers.
