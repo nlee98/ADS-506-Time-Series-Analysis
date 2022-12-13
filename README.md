@@ -38,4 +38,3 @@ The preliminary objective of this study is to accurately forecast future unemplo
 
 ### Authors
 * Nicholas Lee
-* Hoori Javadnia
